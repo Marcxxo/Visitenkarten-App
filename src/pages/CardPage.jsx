@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Home, UserCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { Home, Loader2, ArrowLeft } from 'lucide-react';
+import { UserCircle } from 'lucide-react';
 import CardPreview from '@/components/CardPreview';
 
 const CardPage = () => {

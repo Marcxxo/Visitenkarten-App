@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import QRCode from 'qrcode.react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Link as LinkIcon, Youtube, Briefcase, Info, Phone, Mail, MapPin, Settings, Zap, Calendar, Map, User, X } from 'lucide-react';
+import { Link as LinkIcon, Youtube, Briefcase, Info, Phone, Mail, MapPin, Settings, Zap, Calendar, Map, X } from 'lucide-react';
+import { UserCircle } from 'lucide-react';
 
 const CardPreview = ({ profileData, themeColors, currentUrl }) => {
   const {

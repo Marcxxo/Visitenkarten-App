@@ -128,18 +128,22 @@ const CreateCardPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('handleSubmit gestartet.');
+
     if (!formData.firstName || !formData.lastName) {
       toast({
         variant: "destructive",
         title: "Fehler",
         description: "Vorname und Nachname sind Pflichtfelder.",
       });
+      console.log('Validierung fehlgeschlagen: Vorname oder Nachname fehlt.');
       return;
     }
 
     try {
+      console.log('Validierung erfolgreich. Versuche Daten zu speichern...');
       const existingProfiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
-      console.log('Vorhandene Profile:', existingProfiles);
+      console.log('Vorhandene Profile aus localStorage geladen:', existingProfiles);
 
       if (existingProfiles.some(p => p.firstName === formData.firstName && p.lastName === formData.lastName)) {
         toast({
@@ -147,50 +151,83 @@ const CreateCardPage = () => {
           title: "Fehler",
           description: "Eine Visitenkarte mit diesem Namen existiert bereits.",
         });
+        console.log('Validierung fehlgeschlagen: Name existiert bereits.');
         return;
       }
       
       const profileToSave = { ...formData };
-      console.log('Zu speicherndes Profil:', profileToSave);
+      console.log('Zu speicherndes Profil vorbereitet (initial):', profileToSave);
 
+      // Spezifische Logs für die Bildbehandlung
+      console.log('Bilddaten vor Verarbeitung:', { image: formData.image ? 'vorhanden' : 'fehlt', imageName: formData.imageName });
       if (formData.imageName && formData.image && typeof formData.image === 'string' && formData.image.startsWith('data:image')) {
+        console.log('Bild ist Base64-Data-URL. Wird als Dateiname im Profil gespeichert, Base64 separat.');
         profileToSave.image = formData.imageName;
-        console.log('Bild wird als Dateiname gespeichert:', formData.imageName);
+        // Base64 Bild separat speichern
+        try {
+          console.log('Versuche Base64 Bild separat zu speichern...');
+          localStorage.setItem(`profileImage_${formData.firstName}_${formData.lastName}`, formData.image);
+          console.log('Base64 Bild separat im localStorage gespeichert.');
+        } catch (localStorageErr) {
+          console.error('Fehler beim separaten Speichern des Base64 Bildes:', localStorageErr);
+          // Fehler beim Speichern des Bildes sollte das Speichern des Profils nicht blockieren, aber wir loggen es.
+        }
       } else if (formData.image && typeof formData.image === 'string' && !formData.image.startsWith('data:image')) {
+        console.log('Bild ist bereits ein Dateiname. Wird so im Profil gespeichert.');
         profileToSave.image = formData.image;
-        console.log('Bild wird als existierender Dateiname gespeichert:', formData.image);
       } else {
-        delete profileToSave.image;
-        console.log('Kein Bild zum Speichern vorhanden');
+        console.log('Kein Bild zum Speichern vorhanden oder ungültig.');
+        delete profileToSave.image; // Stellen Sie sicher, dass kein ungültiger Wert gespeichert wird.
       }
-      delete profileToSave.imageName;
+      delete profileToSave.imageName; // imageName wird nicht im finalen Profil gespeichert.
+      console.log('Finales Profilobjekt vor dem Speichern in Liste:', profileToSave);
 
       existingProfiles.push(profileToSave);
-      localStorage.setItem('userProfiles', JSON.stringify(existingProfiles));
-      console.log('Profile nach dem Speichern:', JSON.parse(localStorage.getItem('userProfiles')));
+      console.log('Neues Profilobjekt zur Liste hinzugefügt.');
       
-      if (formData.image && typeof formData.image === 'string' && formData.image.startsWith('data:image') && formData.imageName) {
-        localStorage.setItem(`profileImage_${formData.firstName}_${formData.lastName}`, formData.image);
-        console.log('Bild wurde im localStorage gespeichert');
+      const profilesToSaveString = JSON.stringify(existingProfiles);
+      console.log('Stringify der gesamten Profilliste vorbereitet.');
+      console.log(`Größe des zu speichernden Strings (ungefähr): ${profilesToSaveString.length} Zeichen.`);
+
+      // Versuche, die gesamte Profilliste zu speichern
+      try {
+        console.log('Versuche gesamte Profilliste im localStorage zu speichern...');
+        localStorage.setItem('userProfiles', profilesToSaveString);
+        console.log('Gesamte Profilliste im localStorage gespeichert.');
+        
+        // Überprüfung direkt nach dem Speichern
+        const savedProfilesCheck = JSON.parse(localStorage.getItem('userProfiles'));
+        console.log('Profilliste direkt nach dem Speichern aus localStorage gelesen:', savedProfilesCheck);
+
+      } catch (localStorageErr) {
+        console.error('Fehler beim Speichern der gesamten Profilliste im localStorage:', localStorageErr);
+        toast({
+          variant: "destructive",
+          title: "Speicherfehler",
+          description: "Konnte die Visitenkarte nicht speichern. Möglicherweise ist der Speicherplatz im Browser voll.",
+        });
+        return; // Beende die Funktion, wenn das Speichern fehlschlägt.
       }
 
       localStorage.removeItem('draftCardData');
+      console.log('Entwurf aus localStorage entfernt.');
 
       toast({
         title: "Erfolg!",
         description: `Visitenkarte für ${formData.firstName} ${formData.lastName} wurde erstellt.`,
         className: "bg-green-500 text-white",
       });
+      console.log('Erfolgs-Toast angezeigt.');
 
       const cardUrl = `/card/${formData.firstName}_${formData.lastName}`;
       console.log('Weiterleitung zu:', cardUrl);
       navigate(cardUrl);
     } catch (error) {
-      console.error('Fehler beim Speichern der Visitenkarte:', error);
+      console.error('Ein unerwarteter Fehler ist in handleSubmit aufgetreten:', error);
       toast({
         variant: "destructive",
-        title: "Fehler beim Speichern",
-        description: "Es gab ein Problem beim Speichern Ihrer Visitenkarte. Bitte versuchen Sie es erneut.",
+        title: "Unerwarteter Fehler",
+        description: "Beim Erstellen der Visitenkarte ist ein unerwarteter Fehler aufgetreten.",
       });
     }
   };
