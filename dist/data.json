@@ -1,0 +1,41 @@
+
+    [
+      {
+        "username": "ben",
+        "name": "Ben Weber",
+        "image": "ben.jpg",
+        "role": "Frontend Entwickler",
+        "description": "Begeisterter Frontend-Entwickler mit einer Leidenschaft für sauberen Code, ansprechende Benutzeroberflächen und innovative Web-Technologien. Immer auf der Suche nach neuen Herausforderungen und Möglichkeiten, um digitale Erlebnisse zu verbessern.",
+        "links": [
+          { "label": "Portfolio", "url": "https://example.com/ben-portfolio" },
+          { "label": "LinkedIn", "url": "https://linkedin.com/in/benweberdev" },
+          { "label": "GitHub", "url": "https://github.com/benweber" }
+        ],
+        "videoLink": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      },
+      {
+        "username": "lea",
+        "name": "Lea Schmidt",
+        "image": "lea.jpg",
+        "role": "UX/UI Designerin",
+        "description": "Kreative UX/UI Designerin, die benutzerzentrierte Designs mit ästhetischem Anspruch verbindet. Mein Ziel ist es, intuitive und zugängliche Produkte zu gestalten, die echte Probleme lösen und Freude bereiten.",
+        "links": [
+          { "label": "Behance", "url": "https://behance.net/leaschmidt" },
+          { "label": "Dribbble", "url": "https://dribbble.com/leaschmidt" }
+        ],
+        "videoLink": null
+      },
+      {
+        "username": "max",
+        "name": "Max Mustermann",
+        "image": "max.png",
+        "role": "Full-Stack Entwickler",
+        "description": "Erfahrener Full-Stack Entwickler mit Fokus auf skalierbare Webanwendungen. Ich liebe es, komplexe Probleme zu lösen und robuste Lösungen von Grund auf zu entwickeln.",
+        "links": [
+          { "label": "Persönliche Webseite", "url": "https://maxmustermann.dev" },
+          { "label": "Twitter", "url": "https://twitter.com/maxdev" }
+        ],
+        "videoLink": "https://www.youtube.com/watch?v=abcdef12345"
+      }
+    ]
+  
