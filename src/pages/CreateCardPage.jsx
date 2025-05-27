@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ColorPickerInput } from '@/components/ui/color-picker-input';
 import { useToast } from '@/components/ui/use-toast';
-import { Home, Save, Plus, Trash2, Palette, User, UserCircle, Briefcase, Info, Phone, Mail, MapPin, Image as ImageIcon, X } from 'lucide-react';
+import { Home, Save, Plus, Trash2, User, UserCircle, Briefcase, Info, Phone, Mail, MapPin, Image as ImageIcon, X } from 'lucide-react';
 import CardPreview from '@/components/CardPreview';
 
 const CreateCardPage = () => {
@@ -28,11 +27,6 @@ const CreateCardPage = () => {
       location: '',
       links: [{ label: '', url: '' }],
       videoLink: '',
-      themeColors: {
-        primary: '#0ea5e9',
-        accentText: '#67e8f9',
-        // Weitere Farben hier bei Bedarf hinzufügen, basierend auf dem vorherigen Stand
-      },
     };
   });
 
@@ -52,16 +46,6 @@ const CreateCardPage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleColorChange = (colorName, value) => {
-    setFormData(prev => ({
-      ...prev,
-      themeColors: {
-        ...prev.themeColors,
-        [colorName]: value,
-      }
-    }));
   };
 
   const handleLinkChange = (index, e) => {
@@ -315,19 +299,6 @@ const CreateCardPage = () => {
         <div className="flex flex-col gap-1">
           <Label htmlFor="videoLink" className="text-slate-600 font-semibold">YouTube Video Link</Label>
           <Input id="videoLink" name="videoLink" type="url" value={formData.videoLink} onChange={handleChange} placeholder="https://youtube.com/..." className="bg-white border-slate-300 text-slate-700 rounded-xl shadow-sm" />
-        </div>
-        <div className="space-y-2 pt-2 border-t border-slate-100">
-          <Label className="text-base font-semibold text-slate-600 flex items-center mb-2"><Palette className="mr-2 h-5 w-5"/>Kartenfarben</Label>
-          <div className="flex gap-4 items-center">
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-slate-500 mb-1">Primär</span>
-              <ColorPickerInput label="" id="primaryColor" value={formData.themeColors.primary} onChange={(e) => handleColorChange('primary', e.target.value)} />
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-slate-500 mb-1">Akzent</span>
-              <ColorPickerInput label="" id="accentTextColor" value={formData.themeColors.accentText} onChange={(e) => handleColorChange('accentText', e.target.value)} />
-            </div>
-          </div>
         </div>
         <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600 text-white rounded-full py-3 text-lg font-semibold shadow-lg mt-2">Weiter</Button>
       </form>

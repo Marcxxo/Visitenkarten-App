@@ -4,7 +4,6 @@ import { ScanLine, PlusCircle, QrCode, ExternalLink, Eye, X } from 'lucide-react
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import QRCode from 'qrcode.react';
-import UniverseSphere from '@/components/UniverseSphere';
 
 const HomePage = () => {
   const [recentCards, setRecentCards] = useState([]);
@@ -128,7 +127,6 @@ const HomePage = () => {
           </div>
         </motion.div>
       )}
-      <UniverseSphere />
     </div>
   );
 };

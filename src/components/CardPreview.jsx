@@ -21,12 +21,14 @@ const CardPreview = ({ profileData, themeColors, currentUrl }) => {
     image
   } = profileData;
 
+  console.log('Profilbild-Daten:', image);
+
   const [showLargeQrCode, setShowLargeQrCode] = useState(false);
 
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return null;
     const videoIdMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    return videoIdMatch ? `https://www.youtube.com/embed/${videoIdMatch[1]}` : null;
+    return videoIdMatch ? `https://www.youtube.com/embed/${videoIdMatch[1]}?autoplay=1&mute=1` : null;
   };
   const embedUrl = getYouTubeEmbedUrl(videoLink);
 
@@ -86,7 +88,7 @@ const CardPreview = ({ profileData, themeColors, currentUrl }) => {
                className="w-full h-full object-cover" />
            ) : (
               <div className="w-full h-full bg-slate-300 flex items-center justify-center">
-                <UserCircle className="w-24 h-24 text-slate-500" />
+                <UserCircle className="w-48 h-56 text-slate-500" />
              </div>
            )}
         </div>
@@ -102,20 +104,24 @@ const CardPreview = ({ profileData, themeColors, currentUrl }) => {
           </div>
 
           {/* Rolle (direkt unter dem Namen, ohne Icon) */}
-          <div className="flex items-center justify-center text-center mb-6 w-full">
-             <p className="text-sm font-semibold text-slate-700">{role || "Deine Rolle"}</p>
-          </div>
+          {role && role.trim() !== '' && (
+            <div className="flex items-center justify-center text-center mb-6 w-full">
+               <p className="text-sm font-semibold text-slate-700">{role}</p>
+            </div>
+          )}
 
           {/* Neue Container */}
           <div className="w-full space-y-4 mb-6">
                {/* Beschreibung Container */}
-               <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
-                  <Info className="text-green-500 mr-4" size={24} />
-                  <div>
-                      <p className="font-semibold text-slate-700">Beschreibung</p>
-                      <p className="text-sm text-slate-500">{description || "Hier könnte Ihre Beschreibung stehen."}</p>
-                  </div>
-              </div>
+               {description && description.trim() !== '' && (
+                 <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
+                    <Info className="text-green-500 mr-4" size={24} />
+                    <div>
+                        <p className="font-semibold text-slate-700">Beschreibung</p>
+                        <p className="text-sm text-slate-500">{description}</p>
+                    </div>
+                 </div>
+               )}
 
               {/* Telefonnummer Container */}
               {phone && (

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Home, Loader2, ArrowLeft } from 'lucide-react';
+import { Home, Loader2, ArrowLeft, X } from 'lucide-react';
 import { UserCircle } from 'lucide-react';
 import CardPreview from '@/components/CardPreview';
 
 const CardPage = () => {
   const { username } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -99,24 +100,23 @@ const CardPage = () => {
   };
 
   return (
-    <div className="w-full flex flex-col items-center min-h-screen bg-transparent py-8 px-4 relative max-w-2xl mx-auto">
-      <CardPreview profileData={profileForPreview} themeColors={profile.themeColors} currentUrl={currentUrl} />
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="mt-6"
-      >
+    <>
+      {/* X Button oben rechts (fixed position) */}
+      <div className="fixed top-4 right-4 z-50">
         <Button
-          variant="outline"
-          className="flex items-center gap-2 hover:bg-white/10"
-          onClick={() => window.location.href = '/'}
+          variant="ghost"
+          className="text-slate-400 hover:text-slate-600"
+          onClick={() => navigate('/')}
+          aria-label="Zurück zur Startseite"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Zurück zur Startseite
+          <X className="h-6 w-6" />
         </Button>
-      </motion.div>
-    </div>
+      </div>
+
+      <div className="w-full flex flex-col items-center min-h-screen bg-transparent py-8 px-4 relative max-w-2xl mx-auto">
+        <CardPreview profileData={profileForPreview} themeColors={profile.themeColors} currentUrl={currentUrl} />
+      </div>
+    </>
   );
 };
 
