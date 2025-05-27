@@ -137,43 +137,62 @@ const CreateCardPage = () => {
       return;
     }
 
-    const existingProfiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
-    if (existingProfiles.some(p => p.firstName === formData.firstName && p.lastName === formData.lastName)) {
-       toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: "Eine Visitenkarte mit diesem Namen existiert bereits.",
+    try {
+      const existingProfiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
+      console.log('Vorhandene Profile:', existingProfiles);
+
+      if (existingProfiles.some(p => p.firstName === formData.firstName && p.lastName === formData.lastName)) {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Eine Visitenkarte mit diesem Namen existiert bereits.",
+        });
+        return;
+      }
+      
+      const profileToSave = { ...formData };
+      console.log('Zu speicherndes Profil:', profileToSave);
+
+      if (formData.imageName && formData.image && typeof formData.image === 'string' && formData.image.startsWith('data:image')) {
+        profileToSave.image = formData.imageName;
+        console.log('Bild wird als Dateiname gespeichert:', formData.imageName);
+      } else if (formData.image && typeof formData.image === 'string' && !formData.image.startsWith('data:image')) {
+        profileToSave.image = formData.image;
+        console.log('Bild wird als existierender Dateiname gespeichert:', formData.image);
+      } else {
+        delete profileToSave.image;
+        console.log('Kein Bild zum Speichern vorhanden');
+      }
+      delete profileToSave.imageName;
+
+      existingProfiles.push(profileToSave);
+      localStorage.setItem('userProfiles', JSON.stringify(existingProfiles));
+      console.log('Profile nach dem Speichern:', JSON.parse(localStorage.getItem('userProfiles')));
+      
+      if (formData.image && typeof formData.image === 'string' && formData.image.startsWith('data:image') && formData.imageName) {
+        localStorage.setItem(`profileImage_${formData.firstName}_${formData.lastName}`, formData.image);
+        console.log('Bild wurde im localStorage gespeichert');
+      }
+
+      localStorage.removeItem('draftCardData');
+
+      toast({
+        title: "Erfolg!",
+        description: `Visitenkarte für ${formData.firstName} ${formData.lastName} wurde erstellt.`,
+        className: "bg-green-500 text-white",
       });
-      return;
-    }
-    
-    const profileToSave = { ...formData };
-    if (formData.imageName && formData.image && typeof formData.image === 'string' && formData.image.startsWith('data:image')) {
-      profileToSave.image = formData.imageName; // Store only name if it's a new upload
-    } else if (formData.image && typeof formData.image === 'string' && !formData.image.startsWith('data:image')) {
-      // It's likely already a filename from a pre-existing default card
-      profileToSave.image = formData.image;
-    } else {
-       delete profileToSave.image; // No image or invalid
-    }
-    delete profileToSave.imageName; // Don't save imageName separately in final profile data if image is a data URL
 
-    existingProfiles.push(profileToSave);
-    localStorage.setItem('userProfiles', JSON.stringify(existingProfiles));
-    
-    if (formData.image && typeof formData.image === 'string' && formData.image.startsWith('data:image') && formData.imageName) {
-      localStorage.setItem(`profileImage_${formData.firstName}_${formData.lastName}`, formData.image); // Store base64 image
+      const cardUrl = `/card/${formData.firstName}_${formData.lastName}`;
+      console.log('Weiterleitung zu:', cardUrl);
+      navigate(cardUrl);
+    } catch (error) {
+      console.error('Fehler beim Speichern der Visitenkarte:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Speichern",
+        description: "Es gab ein Problem beim Speichern Ihrer Visitenkarte. Bitte versuchen Sie es erneut.",
+      });
     }
-
-    // Optional: Entwurf nach erfolgreichem Speichern löschen
-    localStorage.removeItem('draftCardData');
-
-    toast({
-      title: "Erfolg!",
-      description: `Visitenkarte für ${formData.firstName} ${formData.lastName} wurde erstellt.`,
-      className: "bg-green-500 text-white",
-    });
-    navigate(`/card/${formData.firstName}_${formData.lastName}`);
   };
   
   const qrCodeUrl = formData.firstName && formData.lastName ? `${window.location.origin}/card/${formData.firstName}_${formData.lastName}` : '';

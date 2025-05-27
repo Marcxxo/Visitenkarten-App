@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "build": {
+    "env": {
+      "VITE_APP_HOMEPAGE": "/"
+    }
+  },
+  "outputDirectory": "dist"
+} 

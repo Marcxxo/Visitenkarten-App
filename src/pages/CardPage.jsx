@@ -17,15 +17,19 @@ const CardPage = () => {
       try {
         setLoading(true);
         setError(null);
+        console.log('Suche nach Profil für:', username);
 
         let foundProfile = null;
         const localProfiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
+        console.log('Gefundene Profile im localStorage:', localProfiles);
 
         const [firstName, lastName] = username ? username.split('_') : ['', ''];
+        console.log('Gesuchter Name:', { firstName, lastName });
 
         foundProfile = localProfiles.find(p => 
           p.firstName === firstName && p.lastName === lastName
         );
+        console.log('Gefundenes Profil:', foundProfile);
 
         if (foundProfile) {
           setProfile(foundProfile);
@@ -36,7 +40,9 @@ const CardPage = () => {
           }
           recentCards.unshift({ firstName: foundProfile.firstName, lastName: foundProfile.lastName, name: `${foundProfile.firstName} ${foundProfile.lastName}`, type: 'viewed' });
           localStorage.setItem('recentCards', JSON.stringify(recentCards.slice(0, 10)));
+          console.log('Recent Cards aktualisiert');
         } else {
+          console.log('Kein Profil gefunden');
           setError(`Profil für "${username}" nicht gefunden.`);
         }
       } catch (e) {
