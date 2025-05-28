@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Home, Save, Plus, Trash2, User, UserCircle, Briefcase, Info, Phone, Mail, MapPin, Image as ImageIcon, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Home, Save, Plus, Trash2, User, UserCircle, Briefcase, Info, Phone, Mail, MapPin, Image as ImageIcon, X, Youtube } from 'lucide-react';
 import CardPreview from '@/components/CardPreview';
+import { saveVideo, deleteVideo, getVideo } from '@/lib/indexedDB'; // IndexedDB Funktionen importieren
 
 const CreateCardPage = () => {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ const CreateCardPage = () => {
     // Versuche, gespeicherte Daten aus dem Local Storage zu laden
     const savedData = localStorage.getItem('draftCardData');
     return savedData ? JSON.parse(savedData) : {
+      autostart: false,
       image: '',
       imageName: '',
       firstName: '',
@@ -27,21 +30,118 @@ const CreateCardPage = () => {
       location: '',
       links: [{ label: '', url: '' }],
       videoLink: '',
+      videoName: '',
     };
   });
 
-  // Effekt zum automatischen Speichern bei jeder Änderung von formData
+  // Effekt zum Laden des Bildes und Videos aus IndexedDB beim Laden der Seite
+  useEffect(() => {
+    const loadMedia = async () => {
+      // Lade Medien nur, wenn sowohl Vorname als auch Nachname vorhanden sind
+      if (formData.firstName && formData.lastName) {
+        console.log('Lade Medien für:', formData.firstName, formData.lastName);
+        // Bild laden
+        const imageId = `profileImage_${formData.firstName}_${formData.lastName}`;
+        try {
+          const imageBlob = await getVideo(imageId); // Verwende getVideo für Bilder
+          if (imageBlob) {
+            const imageUrl = URL.createObjectURL(imageBlob);
+            setFormData(prev => ({
+               ...prev,
+               image: imageUrl, // Speichere URL temporär für Anzeige
+               // image name should be loaded from the profile data if needed for display
+            }));
+          } else {
+             // Wenn kein Blob für die aktuelle ID gefunden wurde, ABER bereits eine temporäre URL existiert,
+             // bedeutet dies, dass das Bild mit einem unvollständigen Namen hochgeladen wurde.
+             // In diesem Fall behalten wir die bestehende temporäre URL bei und löschen sie NICHT.
+             // Die Speicherung mit der korrekten ID erfolgt beim Speichern der Visitenkarte (handleSubmit).
+             if (!formData.image || !formData.image.startsWith('blob:')){
+                setFormData(prev => ({ ...prev, image: '' })); // Nur löschen, wenn keine gültige temporäre URL da ist
+             }
+          }
+        } catch (error) {
+          console.error('Fehler beim Laden des Bildes aus IndexedDB:', error);
+        }
+
+        // Video laden
+        const videoId = `profileVideo_${formData.firstName}_${formData.lastName}`;
+        try {
+          const videoBlob = await getVideo(videoId); // Verwende getVideo für Videos
+          if (videoBlob) {
+            const videoUrl = URL.createObjectURL(videoBlob);
+            setFormData(prev => ({
+                ...prev,
+                videoLink: videoUrl, // Speichere URL temporär für Anzeige
+                // video name should be loaded from the profile data if needed for display
+                // autostart should be loaded from the profile data if needed
+            }));
+          } else {
+             // Gleiche Logik wie beim Bild für das Video
+             if (!formData.videoLink || !formData.videoLink.startsWith('blob:')){
+                setFormData(prev => ({ ...prev, videoLink: '' })); // Nur löschen, wenn keine gültige temporäre URL da ist
+             }
+          }
+        } catch (error) {
+          console.error('Fehler beim Laden des Videos aus IndexedDB:', error);
+        }
+      } else {
+          // Wenn Vorname oder Nachname fehlen, setze temporäre URLs und Namen zurück
+          if (formData.image && formData.image.startsWith('blob:')) {
+              URL.revokeObjectURL(formData.image);
+          }
+          if (formData.videoLink && formData.videoLink.startsWith('blob:')) {
+             URL.revokeObjectURL(formData.videoLink);
+          }
+          setFormData(prev => ({ ...prev, image: '', videoLink: '', imageName: '', videoName: '', autostart: false }));
+      }
+    };
+    loadMedia();
+
+    // Cleanup: Revoke Object URLs beim Unmounten oder bei Namensänderung
+    // Diese Logik ist immer noch notwendig, um Speicherlecks zu vermeiden
+    return () => {
+      if (formData.image && formData.image.startsWith('blob:')) {
+          URL.revokeObjectURL(formData.image);
+      }
+      if (formData.videoLink && formData.videoLink.startsWith('blob:')) {
+         URL.revokeObjectURL(formData.videoLink);
+      }
+    };
+
+  }, [formData.firstName, formData.lastName]); // Abhängigkeit auf username, um bei Namensänderung neu zu laden
+
+  // Effekt zum automatischen Speichern bei jeder Änderung von formData (ohne Blobs/URLs)
   useEffect(() => {
     try {
-      localStorage.setItem('draftCardData', JSON.stringify(formData));
-      // Optional: Eine kleine visuelle Bestätigung hinzufügen
-      // console.log("Entwurf automatisch gespeichert!");
+      const dataToSave = { ...formData };
+      // Temporäre URLs und Blobs/DataURLs nicht im localStorage speichern
+      delete dataToSave.videoLink; // Temporäre URL
+      delete dataToSave.image;     // Temporäre URL
+
+      // videoName und imageName können optional gespeichert werden, um den Namen anzuzeigen
+
+      localStorage.setItem('draftCardData', JSON.stringify(dataToSave));
     } catch (error) {
       console.error("Fehler beim Speichern des Entwurfs:", error);
-      // Optional: Toast-Nachricht anzeigen, falls das Speichern fehlschlägt
-      // toast({ variant: "destructive", description: "Entwurf konnte nicht gespeichert werden." });
     }
   }, [formData]); // Dieser Effekt läuft, wenn sich formData ändert
+
+  useEffect(() => {
+    // Lade gespeicherte Daten aus dem localStorage
+    const savedData = localStorage.getItem('cardData');
+    if (savedData) {
+      setFormData(JSON.parse(savedData));
+    }
+
+    // Prüfe, ob wir eine Visitenkarte zum Bearbeiten haben
+    const editData = localStorage.getItem('editCardData');
+    if (editData) {
+      setFormData(JSON.parse(editData));
+      // Lösche die Bearbeitungsdaten nach dem Laden
+      localStorage.removeItem('editCardData');
+    }
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,22 +164,152 @@ const CreateCardPage = () => {
     setFormData(prev => ({ ...prev, links: newLinks }));
   };
   
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      // Stelle sicher, dass Vorname und Nachname vorhanden sind, um eine konsistente ID zu generieren
+      if (!formData.firstName || !formData.lastName) {
+         toast({
+            variant: "destructive",
+            title: "Name fehlt",
+            description: "Bitte geben Sie sowohl Vorname als auch Nachname ein, bevor Sie ein Bild hochladen.",
+         });
+         // Setze den Wert des Datei-Inputs zurück, damit derselbe Fehler bei erneuter Auswahl auftritt
+         e.target.value = null;
+         return;
+      }
+
+      const maxSize = 5 * 1024 * 1024; // 5MB limit für Bilder
+      if (file.size > maxSize) {
         toast({
           variant: "destructive",
           title: "Fehler beim Hochladen",
-          description: "Die Bilddatei darf maximal 2MB groß sein.",
+          description: `Die Bilddatei darf maximal ${maxSize / (1024 * 1024)}MB groß sein.`, // Angepasste Fehlermeldung
         });
         return;
       }
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, image: reader.result, imageName: file.name }));
+      reader.onloadend = async () => {
+        const imageBlob = new Blob([reader.result], { type: file.type });
+        const imageId = `profileImage_${formData.firstName}_${formData.lastName}`;
+
+        try {
+          await deleteVideo(imageId); // Altes Bild in IndexedDB löschen
+          await saveVideo(imageId, imageBlob); // Neues Bild in IndexedDB speichern
+
+          const imageUrl = URL.createObjectURL(imageBlob); // Temporäre URL für Vorschau
+          // Wenn bereits eine alte URL in formData.image ist, freigeben
+          if(formData.image && formData.image.startsWith('blob:')){
+              URL.revokeObjectURL(formData.image);
+          }
+          setFormData(prev => ({
+            ...prev,
+            image: imageUrl, // Speichere TEMPORÄRE URL für Anzeige
+            imageName: file.name // Speichere nur den Namen
+          }));
+          toast({
+            title: "Bild erfolgreich hochgeladen!",
+            className: "bg-green-500 text-white",
+          });
+        } catch (error) {
+          console.error("Fehler beim Speichern des Bildes in IndexedDB:", error);
+          toast({
+            variant: "destructive",
+            title: "Fehler beim Speichern des Bildes",
+            description: "Konnte das Bild nicht speichern.",
+          });
+        }
       };
-      reader.readAsDataURL(file);
+      reader.readAsArrayBuffer(file); // Lese als ArrayBuffer für Blob
+    }
+  };
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Stelle sicher, dass Vorname und Nachname vorhanden sind, um eine konsistente ID zu generieren
+      if (!formData.firstName || !formData.lastName) {
+         toast({
+            variant: "destructive",
+            title: "Name fehlt",
+            description: "Bitte geben Sie sowohl Vorname als auch Nachname ein, bevor Sie ein Video hochladen.",
+         });
+         // Setze den Wert des Datei-Inputs zurück
+         e.target.value = null;
+         return;
+      }
+
+      const maxSize = 10 * 1024 * 1024; // 10MB limit für Videos
+      if (file.size > maxSize) {
+         toast({
+            variant: "destructive",
+            title: "Fehler beim Hochladen",
+            description: `Die Videodatei darf maximal ${maxSize / (1024 * 1024)}MB groß sein.`, // Angepasste Fehlermeldung
+         });
+         e.target.value = null; // Setze den Wert des Datei-Inputs zurück
+         return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const videoBlob = new Blob([reader.result], { type: file.type });
+        const videoId = `profileVideo_${formData.firstName}_${formData.lastName}`;
+
+        try {
+          await deleteVideo(videoId); // Altes Video in IndexedDB löschen
+          await saveVideo(videoId, videoBlob); // Neues Video in IndexedDB speichern
+
+          const videoUrl = URL.createObjectURL(videoBlob); // Temporäre URL für Vorschau
+           // Wenn bereits eine alte URL in formData.videoLink ist, freigeben
+          if(formData.videoLink && formData.videoLink.startsWith('blob:')){
+              URL.revokeObjectURL(formData.videoLink);
+          }
+          setFormData(prev => ({
+            ...prev,
+            videoLink: videoUrl, // Speichere TEMPORÄRE URL für Anzeige
+            videoName: file.name, // Speichere nur den Namen
+            // autostart bleibt unverändert beim Hochladen
+          }));
+          toast({
+            title: "Video erfolgreich hochgeladen!",
+            className: "bg-green-500 text-white",
+          });
+        } catch (error) {
+          console.error("Fehler beim Speichern des Videos in IndexedDB:", error);
+          toast({
+            variant: "destructive",
+            title: "Fehler beim Speichern des Videos",
+            description: "Konnte das Video nicht speichern.",
+          });
+        }
+      };
+      reader.readAsArrayBuffer(file); // Lese als ArrayBuffer für Blob
+    }
+  };
+
+  const removeVideo = async () => {
+    if (formData.videoLink && formData.firstName && formData.lastName) {
+      const videoId = `profileVideo_${formData.firstName}_${formData.lastName}`;
+      try {
+        await deleteVideo(videoId);
+        // Temporäre URL freigeben
+        if(formData.videoLink && formData.videoLink.startsWith('blob:')){
+            URL.revokeObjectURL(formData.videoLink);
+        }
+        setFormData(prev => ({ ...prev, videoLink: '', videoName: '', autostart: false }));
+        toast({
+          title: "Video erfolgreich entfernt!",
+          className: "bg-green-500 text-white",
+        });
+      } catch (error) {
+        console.error("Fehler beim Löschen des Videos aus IndexedDB:", error);
+        toast({
+          variant: "destructive",
+          title: "Fehler beim Entfernen des Videos",
+          description: "Konnte das Video nicht entfernen.",
+        });
+      }
     }
   };
 
@@ -110,110 +340,39 @@ const CreateCardPage = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('handleSubmit gestartet.');
-
-    if (!formData.firstName || !formData.lastName) {
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: "Vorname und Nachname sind Pflichtfelder.",
-      });
-      console.log('Validierung fehlgeschlagen: Vorname oder Nachname fehlt.');
-      return;
-    }
-
-    try {
-      console.log('Validierung erfolgreich. Versuche Daten zu speichern...');
-      const existingProfiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
-      console.log('Vorhandene Profile aus localStorage geladen:', existingProfiles);
-
-      if (existingProfiles.some(p => p.firstName === formData.firstName && p.lastName === formData.lastName)) {
-        toast({
-          variant: "destructive",
-          title: "Fehler",
-          description: "Eine Visitenkarte mit diesem Namen existiert bereits.",
-        });
-        console.log('Validierung fehlgeschlagen: Name existiert bereits.');
-        return;
-      }
-      
-      const profileToSave = { ...formData };
-      console.log('Zu speicherndes Profil vorbereitet (initial):', profileToSave);
-
-      // Spezifische Logs für die Bildbehandlung
-      console.log('Bilddaten vor Verarbeitung:', { image: formData.image ? 'vorhanden' : 'fehlt', imageName: formData.imageName });
-      if (formData.imageName && formData.image && typeof formData.image === 'string' && formData.image.startsWith('data:image')) {
-        console.log('Bild ist Base64-Data-URL. Wird als Dateiname im Profil gespeichert, Base64 separat.');
-        profileToSave.image = formData.imageName;
-        // Base64 Bild separat speichern
-        try {
-          console.log('Versuche Base64 Bild separat zu speichern...');
-          localStorage.setItem(`profileImage_${formData.firstName}_${formData.lastName}`, formData.image);
-          console.log('Base64 Bild separat im localStorage gespeichert.');
-        } catch (localStorageErr) {
-          console.error('Fehler beim separaten Speichern des Base64 Bildes:', localStorageErr);
-          // Fehler beim Speichern des Bildes sollte das Speichern des Profils nicht blockieren, aber wir loggen es.
-        }
-      } else if (formData.image && typeof formData.image === 'string' && !formData.image.startsWith('data:image')) {
-        console.log('Bild ist bereits ein Dateiname. Wird so im Profil gespeichert.');
-        profileToSave.image = formData.image;
-      } else {
-        console.log('Kein Bild zum Speichern vorhanden oder ungültig.');
-        delete profileToSave.image; // Stellen Sie sicher, dass kein ungültiger Wert gespeichert wird.
-      }
-      delete profileToSave.imageName; // imageName wird nicht im finalen Profil gespeichert.
-      console.log('Finales Profilobjekt vor dem Speichern in Liste:', profileToSave);
-
-      existingProfiles.push(profileToSave);
-      console.log('Neues Profilobjekt zur Liste hinzugefügt.');
-      
-      const profilesToSaveString = JSON.stringify(existingProfiles);
-      console.log('Stringify der gesamten Profilliste vorbereitet.');
-      console.log(`Größe des zu speichernden Strings (ungefähr): ${profilesToSaveString.length} Zeichen.`);
-
-      // Versuche, die gesamte Profilliste zu speichern
-      try {
-        console.log('Versuche gesamte Profilliste im localStorage zu speichern...');
-        localStorage.setItem('userProfiles', profilesToSaveString);
-        console.log('Gesamte Profilliste im localStorage gespeichert.');
-        
-        // Überprüfung direkt nach dem Speichern
-        const savedProfilesCheck = JSON.parse(localStorage.getItem('userProfiles'));
-        console.log('Profilliste direkt nach dem Speichern aus localStorage gelesen:', savedProfilesCheck);
-
-      } catch (localStorageErr) {
-        console.error('Fehler beim Speichern der gesamten Profilliste im localStorage:', localStorageErr);
-        toast({
-          variant: "destructive",
-          title: "Speicherfehler",
-          description: "Konnte die Visitenkarte nicht speichern. Möglicherweise ist der Speicherplatz im Browser voll.",
-        });
-        return; // Beende die Funktion, wenn das Speichern fehlschlägt.
-      }
-
-      localStorage.removeItem('draftCardData');
-      console.log('Entwurf aus localStorage entfernt.');
-
-      toast({
-        title: "Erfolg!",
-        description: `Visitenkarte für ${formData.firstName} ${formData.lastName} wurde erstellt.`,
-        className: "bg-green-500 text-white",
-      });
-      console.log('Erfolgs-Toast angezeigt.');
-
-      const cardUrl = `/card/${formData.firstName}_${formData.lastName}`;
-      console.log('Weiterleitung zu:', cardUrl);
-      navigate(cardUrl);
-    } catch (error) {
-      console.error('Ein unerwarteter Fehler ist in handleSubmit aufgetreten:', error);
-      toast({
-        variant: "destructive",
-        title: "Unerwarteter Fehler",
-        description: "Beim Erstellen der Visitenkarte ist ein unerwarteter Fehler aufgetreten.",
-      });
-    }
+    
+    // Generiere eine eindeutige ID für die Visitenkarte
+    const cardId = `${formData.firstName}_${formData.lastName}`.toLowerCase().replace(/\s+/g, '_');
+    
+    // Speichere die Visitenkarte im localStorage
+    localStorage.setItem(`card_${cardId}`, JSON.stringify(formData));
+    
+    // Speichere die Visitenkarte als zuletzt erstellt
+    localStorage.setItem('lastCreatedCard', JSON.stringify(formData));
+    
+    // Speichere die Visitenkarte in der Liste der kürzlich erstellten Karten
+    const recentCards = JSON.parse(localStorage.getItem('recentCards') || '[]');
+    const newRecent = {
+      ...formData,
+      type: 'created',
+      timestamp: new Date().toISOString()
+    };
+    
+    // Entferne doppelte Einträge und füge den neuen Eintrag hinzu
+    const uniqueRecents = [
+      newRecent,
+      ...recentCards.filter(card => 
+        card.firstName !== formData.firstName || 
+        card.lastName !== formData.lastName
+      )
+    ].slice(0, 10); // Behalte nur die 10 neuesten Einträge
+    
+    localStorage.setItem('recentCards', JSON.stringify(uniqueRecents));
+    
+    // Navigiere zur Visitenkarte
+    navigate(`/card/${cardId}`);
   };
   
   const qrCodeUrl = formData.firstName && formData.lastName ? `${window.location.origin}/card/${formData.firstName}_${formData.lastName}` : '';
@@ -297,8 +456,62 @@ const CreateCardPage = () => {
           </Button>
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="videoLink" className="text-slate-600 font-semibold">YouTube Video Link</Label>
-          <Input id="videoLink" name="videoLink" type="url" value={formData.videoLink} onChange={handleChange} placeholder="https://youtube.com/..." className="bg-white border-slate-300 text-slate-700 rounded-xl shadow-sm" />
+          <Label className="text-slate-600 font-semibold flex items-center gap-2">
+            <Youtube className="w-4 h-4 text-red-500" />Autostart Video
+          </Label>
+          {!formData.videoLink ? (
+            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
+              <input
+                type="file"
+                id="videoFile"
+                accept="video/*"
+                onChange={handleVideoUpload}
+                className="hidden"
+              />
+              <label
+                htmlFor="videoFile"
+                className="flex flex-col items-center justify-center cursor-pointer"
+              >
+                <Youtube className="w-8 h-8 text-red-500 mb-2" />
+                <span className="text-sm text-slate-600 font-medium">Video hochladen</span>
+                <span className="text-xs text-slate-500 mt-1">MP4, WebM oder MOV (max. 10MB)</span>
+              </label>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <Youtube className="w-5 h-5 text-red-500" />
+                  <span className="text-sm text-slate-600 font-medium truncate">
+                    {formData.videoName}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={removeVideo}
+                  className="text-slate-400 hover:text-red-500"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-between mt-0 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="autostart"
+                    checked={formData.autostart}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, autostart: checked }))}
+                  />
+                  <Label htmlFor="autostart" className="text-sm text-slate-600 font-medium">
+                    Video automatisch starten
+                  </Label>
+                </div>
+                <span className="text-xs text-slate-500">
+                  {formData.autostart ? 'Aktiviert' : 'Deaktiviert'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
         <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600 text-white rounded-full py-3 text-lg font-semibold shadow-lg mt-2">Weiter</Button>
       </form>

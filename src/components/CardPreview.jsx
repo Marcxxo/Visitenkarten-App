@@ -1,11 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode.react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Link as LinkIcon, Youtube, Briefcase, Info, Phone, Mail, MapPin, Settings, Zap, Calendar, Map, X } from 'lucide-react';
 import { UserCircle } from 'lucide-react';
 
-const CardPreview = ({ profileData, themeColors, currentUrl }) => {
+// Füge hier die Animation-Varianten hinzu
+const videoVariants = {
+  initial: { 
+    scale: 1,
+    rotate: 0, 
+    y: 0, 
+    x: 0, 
+    zIndex: 1, 
+    position: 'relative',
+    top: 'auto',
+    left: 'auto',
+    width: '100%',
+    height: 'auto',
+    transform: 'translate(0%, 0%)',
+  },
+  zoomed: { 
+    scale: 1,
+    rotate: 0, 
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    width: '80%',
+    maxWidth: '600px',
+    height: 'auto',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 50,
+  },
+};
+
+const CardPreview = ({ profileData, themeColors, currentUrl, isZoomedVideo, onExitZoom }) => {
   const {
     name,
     username,
@@ -18,19 +47,20 @@ const CardPreview = ({ profileData, themeColors, currentUrl }) => {
     location,
     firstName,
     lastName,
-    image
+    image,
+    autostart
   } = profileData;
 
-  console.log('Profilbild-Daten:', image);
+  // Bestimme die endgültige Bildquelle
+  const finalImageSrc = image && typeof image === 'string' && (image.startsWith('blob:') || image.startsWith('http') || image.startsWith('/')) ? image : null;
+
+  // Bestimme die endgültige Videoquelle
+  const finalVideoSrc = videoLink && typeof videoLink === 'string' && (videoLink.startsWith('blob:') || videoLink.startsWith('http')) ? videoLink : null;
 
   const [showLargeQrCode, setShowLargeQrCode] = useState(false);
 
-  const getYouTubeEmbedUrl = (url) => {
-    if (!url) return null;
-    const videoIdMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    return videoIdMatch ? `https://www.youtube.com/embed/${videoIdMatch[1]}?autoplay=1&mute=1` : null;
-  };
-  const embedUrl = getYouTubeEmbedUrl(videoLink);
+  // Ref für das Video-Element
+  const videoRef = useRef(null);
 
   const primaryColor = themeColors?.primary || '#0ea5e9'; // sky-500
   const secondaryColor = themeColors?.secondary || '#2dd4bf'; // teal-400
@@ -76,16 +106,11 @@ const CardPreview = ({ profileData, themeColors, currentUrl }) => {
 
         {/* Bildbereich volle Breite oben */}
         <div className="w-full aspect-4/3 bg-slate-200 flex items-center justify-center overflow-hidden rounded-t-[40px]">
-           {image && typeof image === 'string' && image.startsWith('data:image') ? (
+           {finalImageSrc ? (
               <img
-                 src={image}
+                 src={finalImageSrc}
                  alt={`${name || 'Profil'}'s Profilbild`}
                  className="w-full h-full object-cover" />
-           ) : image ? (
-              <img
-               src={`/profile_pics/${image}`}
-               alt={`${name || 'Profil'}'s Profilbild`}
-               className="w-full h-full object-cover" />
            ) : (
               <div className="w-full h-full bg-slate-300 flex items-center justify-center">
                 <UserCircle className="w-48 h-56 text-slate-500" />
@@ -181,22 +206,35 @@ const CardPreview = ({ profileData, themeColors, currentUrl }) => {
             </div>
           )}
 
-          {embedUrl && (
-            <div className="mb-8 w-full">
-              <h2 className="text-xl font-semibold mb-3 text-center flex items-center justify-center" style={headerStyle}>
-                <Youtube className="mr-2 h-5 w-5 text-red-500" />Video
-              </h2>
-              <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-lg border" style={{borderColor: primaryColor}}>
-                <iframe
-                  src={embedUrl}
-                  title="YouTube video player"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
+          {/* Video-Anzeige */}
+          {finalVideoSrc && (
+            <motion.div 
+              className="mb-8 w-full relative"
+              variants={videoVariants}
+              initial="initial"
+              animate={isZoomedVideo ? "zoomed" : "initial"}
+              transition={{ duration: 0.5 }}
+            >
+              {isZoomedVideo && onExitZoom && (
+                  <button
+                      onClick={onExitZoom}
+                      className="absolute top-0 right-0 mt-2 mr-2 z-50 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-1"
+                      aria-label="Video schließen"
+                  >
+                      <X size={20} />
+                  </button>
+              )}
+              <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-lg">
+                <video
+                  ref={videoRef}
+                  src={finalVideoSrc}
+                  controls
+                  autoPlay={autostart}
+                  muted={autostart}
                   className="w-full h-full"
-                ></iframe>
+                />
               </div>
-            </div>
+            </motion.div>
           )}
 
           {currentUrl && (

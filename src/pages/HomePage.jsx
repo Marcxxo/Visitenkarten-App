@@ -117,9 +117,10 @@ const HomePage = () => {
                   {card.type === 'created' ? 'Selbst erstellt' : 'Angesehen'}
                 </p>
                 {/* Link zur Karte, angepasst an neue Struktur */}
-                <Button asChild size="sm" variant="outline" className="w-full border-teal-500 text-teal-300 hover:bg-teal-500/20 hover:text-teal-200">
-                  <Link to={`/card/${card.username || `${card.firstName}_${card.lastName}`}`}>
-                    <Eye className="mr-2 h-4 w-4" /> Ansehen
+                <Button asChild variant="default" className="w-full bg-sky-500 hover:bg-sky-600 text-slate-50 transition-all duration-300">
+                  <Link to={`/card/${card.username || `${card.firstName}_${card.lastName}`}`} className="w-full flex items-center justify-center">
+                    <Eye className="h-4 w-4 mr-2" />
+                    <span>Ansehen</span>
                   </Link>
                 </Button>
               </motion.div>
