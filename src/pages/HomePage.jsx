@@ -1,32 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ScanLine, PlusCircle, QrCode, ExternalLink, Eye, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ScanLine, PlusCircle, QrCode, ExternalLink, Eye, X, Settings, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import QRCode from 'qrcode.react';
 
 const HomePage = () => {
   const [recentCards, setRecentCards] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const viewedCards = JSON.parse(localStorage.getItem('recentCards')) || [];
     const userProfiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
+    const removedCards = JSON.parse(localStorage.getItem('removedCards')) || [];
     
     // Combine based on a unique identifier (username or firstName_lastName)
     const combinedRecentsMap = new Map();
 
     viewedCards.forEach(card => {
-      const key = card.username || `${card.firstName}_${card.lastName}`;
-      if (key) combinedRecentsMap.set(key, {...card, type: 'viewed'});
+      const key = card.username || `${card.firstName}_${card.lastName}_${card.uniqueId}`;
+      if (key && !removedCards.includes(key)) {
+        combinedRecentsMap.set(key, {...card, type: 'viewed'});
+      }
     });
 
     userProfiles.forEach(profile => {
-       const key = profile.username || `${profile.firstName}_${profile.lastName}`;
-       if (key && !combinedRecentsMap.has(key)) {
-         combinedRecentsMap.set(key, {...profile, type: 'created'});
-       } else if (key && combinedRecentsMap.has(key) && combinedRecentsMap.get(key).type === 'viewed'){
-         // Wenn ein selbst erstelltes Profil existiert, überschreibe das 'viewed' Element
-          combinedRecentsMap.set(key, {...profile, type: 'created'});
+       const key = profile.username || `${profile.firstName}_${profile.lastName}_${profile.uniqueId}`;
+       if (key && !removedCards.includes(key)) {
+         if (!combinedRecentsMap.has(key)) {
+           combinedRecentsMap.set(key, {...profile, type: 'created'});
+         } else if (combinedRecentsMap.has(key) && combinedRecentsMap.get(key).type === 'viewed'){
+           combinedRecentsMap.set(key, {...profile, type: 'created'});
+         }
        }
     });
 
@@ -39,20 +44,26 @@ const HomePage = () => {
   // Funktion zum Entfernen einer Karte aus der Liste
   const handleRemoveRecent = (indexToRemove) => {
     setRecentCards(prevCards => {
-      const newCards = prevCards.filter((_, index) => index !== indexToRemove);
-      // Aktualisiere Local Storage nach dem Entfernen
-      // Wir speichern hier die vereinfachten Daten zurück, die wir beim Laden kombinieren
-      const cardsToStore = newCards.map(card => ({
-        username: card.username || undefined, // Behalte username bei, falls vorhanden
-        firstName: card.firstName || undefined,
-        lastName: card.lastName || undefined,
-        name: card.name || undefined, // Behalte name bei, falls vorhanden
-        type: card.type // 'viewed' oder 'created'
-      })).filter(card => card.username || (card.firstName && card.lastName)); // Stelle sicher, dass wir gültige Karten speichern
+      const cardToRemove = prevCards[indexToRemove];
+      const cardKey = cardToRemove.username || `${cardToRemove.firstName}_${cardToRemove.lastName}_${cardToRemove.uniqueId}`;
+      
+      // Füge die entfernte Karte zur Liste der entfernten Karten hinzu
+      const removedCards = JSON.parse(localStorage.getItem('removedCards')) || [];
+      if (!removedCards.includes(cardKey)) {
+        removedCards.push(cardKey);
+        localStorage.setItem('removedCards', JSON.stringify(removedCards));
+      }
 
-      localStorage.setItem('recentCards', JSON.stringify(cardsToStore));
+      // Entferne die Karte aus der aktuellen Ansicht
+      const newCards = prevCards.filter((_, index) => index !== indexToRemove);
       return newCards;
     });
+  };
+
+  // Funktion zum Bearbeiten einer Karte
+  const handleEditCard = (cardToEdit) => {
+    localStorage.setItem('editCardData', JSON.stringify(cardToEdit));
+    navigate('/create-card'); // Navigiere zur Erstellungsseite
   };
 
   return (
@@ -81,48 +92,66 @@ const HomePage = () => {
       </motion.div>
 
       {recentCards.length > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="mb-12"
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="w-full max-w-4xl mx-auto"
         >
-          <h2 className="text-2xl font-semibold text-sky-300 mb-6 text-center">Kürzlich angesehen/erstellt</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <h2 className="text-2xl font-bold mb-6 text-slate-200">Kürzlich erstellte Karten</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {recentCards.map((card, index) => (
               <motion.div
-                key={card.username || `${card.firstName}_${card.lastName}`}
-                className="bg-slate-800/60 backdrop-blur-sm p-4 rounded-lg shadow-xl border border-slate-700 flex flex-col items-center text-center hover:shadow-sky-500/30 transition-shadow duration-300 relative"
-                whileHover={{ y: -5 }}
+                key={index}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-slate-700/50 hover:border-slate-600/50 transition-all duration-300"
               >
-                {/* Neuer Entfernen-Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Verhindert, dass der Link zur Karte ausgelöst wird
-                    handleRemoveRecent(index);
-                  }}
-                  className="absolute top-2 right-2 text-slate-500 hover:text-red-500 transition"
-                  aria-label="Visitenkarte entfernen"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-                
-                <div className="p-2 bg-white rounded-md mb-3 inline-block border border-slate-600">
-                  {/* Annahme: QR-Code generiert URL basierend auf username ODER firstName_lastName */}
-                  <QRCode value={`${window.location.origin}/card/${card.username || `${card.firstName}_${card.lastName}`}`} size={80} bgColor="#ffffff" fgColor="#0f172a" level="H" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    {card.image ? (
+                      <img src={card.image} alt={`${card.firstName} ${card.lastName}`} className="w-12 h-12 rounded-full object-cover border-2 border-sky-400" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center border-2 border-sky-400">
+                        <User className="w-6 h-6 text-sky-400" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-200">{card.firstName} {card.lastName}</h3>
+                      {card.role && <p className="text-sm text-slate-400">{card.role}</p>}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveRecent(index)}
+                    className="text-slate-400 hover:text-red-400"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
                 </div>
-                {/* Anzeige des Namens, angepasst an neue Struktur */}
-                <p className="text-md font-semibold text-sky-400 mb-1 truncate w-full" title={card.name || `${card.firstName} ${card.lastName}`}>{card.name || `${card.firstName} ${card.lastName}`}</p>
-                <p className="text-xs text-slate-400 mb-3">
-                  {card.type === 'created' ? 'Selbst erstellt' : 'Angesehen'}
-                </p>
-                {/* Link zur Karte, angepasst an neue Struktur */}
-                <Button asChild variant="default" className="w-full bg-sky-500 hover:bg-sky-600 text-slate-50 transition-all duration-300">
-                  <Link to={`/card/${card.username || `${card.firstName}_${card.lastName}`}`} className="w-full flex items-center justify-center">
-                    <Eye className="h-4 w-4 mr-2" />
-                    <span>Ansehen</span>
-                  </Link>
-                </Button>
+                <div className="flex flex-col w-full gap-3">
+                  {/* Link zur Karte mit eindeutiger ID */}
+                  <Button asChild variant="default" className="w-full bg-sky-500 hover:bg-sky-600 text-slate-50 transition-all duration-300 flex items-center justify-center">
+                    <Link to={`/card/${(card.firstName + '_' + card.lastName + '_' + card.uniqueId).toLowerCase().replace(/\s+/g, '_')}`} className="w-full flex items-center justify-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      <span>Ansehen</span>
+                    </Link>
+                  </Button>
+
+                  {/* Bearbeiten Button (nur für selbst erstellte Karten) */}
+                  {card.type === 'created' && (
+                     <Button 
+                        variant="outline"
+                        className="w-full border-sky-500 text-sky-500 hover:bg-sky-100 hover:text-sky-700 rounded-md flex items-center justify-center gap-2"
+                        onClick={() => handleEditCard(card)}
+                     >
+                        <Settings className="h-4 w-4" />
+                        <span>Bearbeiten</span>
+                     </Button>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>

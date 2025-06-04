@@ -230,7 +230,7 @@ const CardPreview = ({ profileData, themeColors, currentUrl, isZoomedVideo, onEx
                   src={finalVideoSrc}
                   controls
                   autoPlay={autostart}
-                  muted={autostart}
+                  muted={false}
                   className="w-full h-full"
                 />
               </div>

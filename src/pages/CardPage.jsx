@@ -28,12 +28,13 @@ const CardPage = () => {
         const localProfiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
         console.log('Gefundene Profile im localStorage:', localProfiles);
 
-        const [firstName, lastName] = username ? username.split('_') : ['', ''];
-        console.log('Gesuchter Name:', { firstName, lastName });
+        // Extrahiere die eindeutige ID aus dem username
+        const parts = username ? username.split('_') : ['', '', ''];
+        const uniqueId = parts.slice(-2).join('_'); // Nimm die letzten beiden Teile für die ID
+        
+        console.log('Gesuchter Name und ID:', { uniqueId });
 
-        foundProfile = localProfiles.find(p =>
-          p.firstName === firstName && p.lastName === lastName
-        );
+        foundProfile = localProfiles.find(p => p.uniqueId === uniqueId);
         console.log('Gefundenes Profil (aus localStorage):', foundProfile);
 
         if (!foundProfile) {
@@ -104,10 +105,6 @@ const CardPage = () => {
                   image: displayImage,
                   videoLink: videoSrcUrl,
                   autostart: autostart,
-                  imageId: undefined,
-                  videoId: undefined,
-                  videoBlob: undefined,
-                  imageBlob: undefined,
               };
 
               setProfile(profileForCardPreview);
